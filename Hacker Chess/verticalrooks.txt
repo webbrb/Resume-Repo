@@ -1,0 +1,32 @@
+// initializing variables
+    int r1_count =  r1.size();
+    int r2_count = r2.size();
+    int nimsum = 0;
+    int distance[r1_count];
+    int j;
+    int i;
+    int countones=0;
+    // getting distance between r1 and r2 for each respective column
+    for(j=0; j<r2_count; j++){
+        distance[j] = abs(r1[j] - r2[j]);
+    }
+    // xor'ing every respective bit in distance to come up with the nimsum
+    for(i=0; i < r1_count; i++){
+        nimsum ^= distance[i];
+    }
+    // no player can move
+    if(nimsum ==0){
+        return "player-1";
+    }
+    //counting number of ones in nimusum
+    while(nimsum != 0){
+        nimsum = nimsum & (nimsum -1);
+        countones++;
+    }
+
+    if(countones%2 == 0){
+        return "player-1";
+    }
+    else{
+        return "player-2";
+    }

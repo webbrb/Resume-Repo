@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/cygdrive/c/Users/RB/CLionProjects/NetworksProj3/events.h
+
+/cygdrive/c/Users/RB/CLionProjects/NetworksProj3/rtp.c
+stdio.h
+-
+memory.h
+-
+ctype.h
+-
+events.h
+/cygdrive/c/Users/RB/CLionProjects/NetworksProj3/events.h
+rtp.h
+/cygdrive/c/Users/RB/CLionProjects/NetworksProj3/rtp.h
+string.h
+-
+
+/cygdrive/c/Users/RB/CLionProjects/NetworksProj3/rtp.h
+events.h
+/cygdrive/c/Users/RB/CLionProjects/NetworksProj3/events.h
+

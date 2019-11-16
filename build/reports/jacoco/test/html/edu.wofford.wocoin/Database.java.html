@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Database.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">wocoin</a> &gt; <a href="index.source.html" class="el_package">edu.wofford.wocoin</a> &gt; <span class="el_source">Database.java</span></div><h1>Database.java</h1><pre class="source lang-java linenums">package edu.wofford.wocoin;
+
+import java.io.*;
+import java.sql.*;
+
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
+import javax.crypto.*;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.PBEParameterSpec;
+import javax.crypto.Cipher;
+import org.apache.commons.io.FileUtils;
+
+import org.web3j.crypto.CipherException;
+
+import org.web3j.protocol.Web3j;
+
+import org.web3j.protocol.http.HttpService;
+
+import org.web3j.crypto.WalletUtils;
+import org.web3j.crypto.*;
+import java.security.NoSuchAlgorithmException;
+import java.security.*;
+import java.lang.Exception.*;
+
+
+public class Database {
+    private String adminPwd;
+    private String url;
+    private Connection con;
+    private Web3j web3;
+
+    /**
+     * This is the constructor for db
+     * @param fileName relative pathname of database to be created
+     */
+<span class="fc" id="L41">    public Database(String fileName) {</span>
+<span class="fc" id="L42">        adminPwd = &quot;adminpwd&quot;;</span>
+<span class="fc" id="L43">        url = &quot;jdbc:sqlite:&quot; + fileName;</span>
+
+<span class="fc" id="L45">        File file = new File(fileName);</span>
+<span class="pc bpc" id="L46" title="1 of 2 branches missed.">        if(!file.exists()){</span>
+<span class="nc" id="L47">            Utilities.createNewDatabase(fileName);</span>
+
+        }
+
+<span class="fc" id="L51">    }</span>
+
+    /**
+     * returns the administrators password
+     */
+
+    public  String getAdminPwd(){
+<span class="fc" id="L58">        return adminPwd;</span>
+    }
+
+    /**
+     * returns TRUE if the caller's input is administrator
+     * @param password - user input to check against
+     * @return boolean if the password exists or not
+     */
+
+    public boolean checkIsAdmin(String password){
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        if(password.equals(getAdminPwd())){</span>
+<span class="fc" id="L69">            return true;</span>
+        }
+        else{
+<span class="fc" id="L72">            return false;</span>
+        }
+
+
+    }
+    /**
+     *helper method to add user currently not working
+     * @return boolean if the user exists
+     */
+
+    public boolean userExists(String id) {
+
+
+       // String testQuery = &quot;SELECT id FROM users WHERE id = ?;&quot;;
+<span class="fc" id="L86">        try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="fc" id="L87">             PreparedStatement stmt = conn.prepareStatement(&quot;SELECT id FROM users WHERE id = ?;&quot;)){</span>
+
+<span class="fc" id="L89">                 stmt.setString(1,id);</span>
+<span class="fc" id="L90">                 ResultSet rs = stmt.executeQuery();</span>
+
+<span class="fc bfc" id="L92" title="All 2 branches covered.">                 if (rs.next()) {</span>
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">                     if(rs.getString(1).equals(id)){</span>
+<span class="fc" id="L94">                         return true;</span>
+                     }
+                     else{
+<span class="nc" id="L97">                         return false;</span>
+                     }
+                 } else {
+<span class="fc" id="L100">                    return false;</span>
+                 }
+
+        }
+<span class="nc" id="L104">        catch(SQLException e){</span>
+<span class="nc" id="L105">            e.printStackTrace();</span>
+<span class="nc" id="L106">            return true;</span>
+        }
+    }
+
+    /**
+     *currently not working depends on the above UserExists method that is not correctly working
+     * we know this because of the code coverage report that does not go inside the main if of the function
+     * @param id this will be the value stored in the id column of the Database
+     * @param password this value will be salted and hashed and stored in the salt and hash columns of the DB
+     * @return boolean if user exists or not
+     */
+
+    public boolean addUser(String id, String password) {
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        if(!userExists(id)){</span>
+            String saltedPasswd;
+<span class="fc" id="L121">            int salt = generateSalt();</span>
+<span class="fc" id="L122">            saltedPasswd = getSaltedPasswd(password, salt);</span>
+<span class="fc" id="L123">            String hash = getHash(saltedPasswd);</span>
+
+<span class="fc" id="L125">            String testQuery = &quot;INSERT INTO users (id, salt, hash) VALUES (?, ?, ?);&quot;;</span>
+
+<span class="fc" id="L127">            try (Connection conn= DriverManager.getConnection(url);</span>
+<span class="fc" id="L128">                 PreparedStatement stmt = conn.prepareStatement(testQuery)){</span>
+
+<span class="fc" id="L130">                stmt.setString(1, id);</span>
+<span class="fc" id="L131">                stmt.setInt(2, salt);</span>
+<span class="fc" id="L132">                stmt.setString(3, hash);</span>
+<span class="fc" id="L133">                stmt.executeUpdate();</span>
+
+
+<span class="fc" id="L136">                return true;</span>
+            }
+<span class="nc" id="L138">            catch(SQLException e){</span>
+<span class="nc" id="L139">                e.printStackTrace();</span>
+<span class="nc" id="L140">                return false;</span>
+            }
+        }
+        else{
+<span class="fc" id="L144">            return false;</span>
+        }
+
+    }
+    /**
+     * Removes a user identified by their id from the Database
+     * @param id a value passed in by the user to be removed
+     * @return a boolean value of if the user was removed or not
+     */
+    public boolean removeUser(String id){
+<span class="fc bfc" id="L154" title="All 2 branches covered.">        if(userExists(id)){</span>
+<span class="fc" id="L155">            try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="fc" id="L156">                 PreparedStatement stmt = conn.prepareStatement(&quot;DELETE FROM users WHERE id = ?;&quot;)){</span>
+<span class="fc" id="L157">                stmt.setString(1,id);</span>
+<span class="fc" id="L158">                stmt.executeUpdate();</span>
+
+<span class="fc" id="L160">                return true;</span>
+<span class="nc" id="L161">            } catch(SQLException e) {</span>
+<span class="nc" id="L162">                e.printStackTrace();</span>
+<span class="nc" id="L163">                return false; }</span>
+        } else {
+<span class="fc" id="L165">            return false;</span>
+        }
+
+    }
+
+    /**
+     * Salts the username
+     * @return a random salt value
+     */
+    private int generateSalt(){
+<span class="fc" id="L175">        int saltValue = Utilities.generateSalt();</span>
+<span class="fc" id="L176">        return saltValue;</span>
+    }
+
+    /**
+     * Creates salted password
+     * @param passWd - the plain text password passed into the functions initially
+     * @param saltValue - a random int that is converted to a string
+     * @return passWd concatenated with SaltValue
+     */
+
+    private String getSaltedPasswd(String passWd, int saltValue){
+
+<span class="fc" id="L188">        String SaltValueString = Integer.toString(saltValue);</span>
+<span class="fc" id="L189">        String builder = passWd + SaltValueString;</span>
+<span class="fc" id="L190">        return builder;</span>
+
+    }
+
+    /**
+     * Creates hash of salted password
+     * @param saltedPasswd this is the value returned from the above function
+     * @return a string that will be stored in the hash field of the DB
+     */
+    private String getHash(String saltedPasswd){
+<span class="fc" id="L200">        return Utilities.applySha256(saltedPasswd);</span>
+    }
+
+
+
+
+
+
+    private boolean isAValidUser(String id){
+<span class="fc" id="L209">        try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="fc" id="L210">             PreparedStatement stmt = conn.prepareStatement(&quot;SELECT id FROM users WHERE id = ?;&quot;)){</span>
+
+<span class="fc" id="L212">            stmt.setString(1,id);</span>
+<span class="fc" id="L213">            ResultSet rs = stmt.executeQuery();</span>
+
+<span class="fc bfc" id="L215" title="All 2 branches covered.">            if (rs.next()) {</span>
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">                if(rs.getString(1).equals(id)){</span>
+<span class="fc" id="L217">                    return true;</span>
+                }
+                else{
+<span class="nc" id="L220">                    return false;</span>
+                }
+            } else {
+<span class="fc" id="L223">                return false;</span>
+            }
+
+        }
+<span class="nc" id="L227">        catch(SQLException e){</span>
+<span class="nc" id="L228">            e.printStackTrace();</span>
+<span class="nc" id="L229">            return true;</span>
+        }
+    }
+
+
+    public boolean walletExists(String id ){
+<span class="fc" id="L235">        try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="fc" id="L236">             PreparedStatement stmt = conn.prepareStatement(&quot;SELECT id FROM wallets WHERE id = ?;&quot;)){</span>
+
+<span class="fc" id="L238">            stmt.setString(1,id);</span>
+<span class="fc" id="L239">            ResultSet rs = stmt.executeQuery();</span>
+
+<span class="fc bfc" id="L241" title="All 2 branches covered.">            if (rs.next()) {</span>
+<span class="pc bpc" id="L242" title="1 of 2 branches missed.">                if(rs.getString(1).equals(id)){</span>
+<span class="fc" id="L243">                    return true;</span>
+                }
+                else{
+<span class="nc" id="L246">                    return false;</span>
+                }
+            } else {
+<span class="fc" id="L249">                return false;</span>
+            }
+
+        }
+<span class="nc" id="L253">        catch(SQLException e){</span>
+<span class="nc" id="L254">            e.printStackTrace();</span>
+<span class="nc" id="L255">            return true;</span>
+        }
+    }
+
+
+
+    public boolean createWallet(String id) {
+
+<span class="fc bfc" id="L263" title="All 2 branches covered.">        if (!isAValidUser(id)) {</span>
+<span class="fc" id="L264">            return false;</span>
+        }
+        else{
+<span class="pc bpc" id="L267" title="1 of 2 branches missed.">            if (walletExists(id)) {</span>
+                try {
+<span class="fc" id="L269">                    String directoryString = &quot;tmp//&quot; + id + &quot;//&quot;;</span>
+<span class="fc" id="L270">                    File directory = new File(directoryString);</span>
+<span class="nc" id="L271">                    FileUtils.cleanDirectory(directory);</span>
+<span class="nc" id="L272">                    directory.delete();</span>
+
+<span class="nc" id="L274">                    String destinationDir = &quot;tmp//&quot; + id + &quot;//&quot;;</span>
+<span class="nc" id="L275">                    File destination = new File(destinationDir);</span>
+<span class="nc" id="L276">                    destination.mkdirs();</span>
+
+<span class="nc" id="L278">                    web3 = Web3j.build(new HttpService(&quot;https://mainnet.infura.io/v3/338a115fa5324abeadccd992f9c6cbab&quot;));</span>
+
+<span class="nc" id="L280">                    String walletFileName = WalletUtils.generateFullNewWalletFile(&quot;password&quot;, destination);</span>
+                    //Credentials credentials = WalletUtils.loadCredentials(&quot;password&quot;, &quot;/ethereum/node0/keystore/UTC--2019-08-07T17-24-10.532680697Z--0fce4741f3f54fbffb97837b4ddaa8f769ba0f91.json&quot;);
+                    //File f2 = new File(destinationDir + walletFileName);
+
+<span class="nc" id="L284">                    String[] fetchAddress = walletFileName.split(&quot;--&quot;);</span>
+
+<span class="nc" id="L286">                    String getAddress = fetchAddress[fetchAddress.length - 1].split(&quot;\\.&quot;)[0];</span>
+
+
+<span class="nc" id="L289">                    try (Connection conne = DriverManager.getConnection(url);</span>
+<span class="nc" id="L290">                         PreparedStatement stmt = conne.prepareStatement(&quot;DELETE FROM wallets WHERE id = ?;&quot;)){</span>
+<span class="nc" id="L291">                        stmt.setString(1,id);</span>
+<span class="nc" id="L292">                        stmt.executeUpdate();</span>
+
+
+                    }
+<span class="nc" id="L296">                    catch(SQLException e) {</span>
+<span class="nc" id="L297">                        e.printStackTrace();</span>
+<span class="nc" id="L298">                    }</span>
+
+<span class="nc" id="L300">                    String testQuery = &quot;INSERT INTO wallets (id, publickey) VALUES (?, ?);&quot;;</span>
+
+
+<span class="nc" id="L303">                    try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="nc" id="L304">                         PreparedStatement stmt = conn.prepareStatement(testQuery)) {</span>
+
+<span class="nc" id="L306">                        stmt.setString(1, id);</span>
+<span class="nc" id="L307">                        stmt.setString(2, getAddress);</span>
+<span class="nc" id="L308">                        stmt.executeUpdate();</span>
+<span class="nc" id="L309">                        return true;</span>
+
+
+<span class="nc" id="L312">                    } catch (SQLException e) {</span>
+<span class="nc" id="L313">                        e.printStackTrace();</span>
+<span class="nc" id="L314">                        return false;</span>
+                    }
+<span class="nc" id="L316">                } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L317">                    System.out.println(&quot;exception&quot;);</span>
+<span class="nc" id="L318">                    e.printStackTrace();</span>
+<span class="nc" id="L319">                    return false;</span>
+<span class="nc" id="L320">                } catch (SecurityException | GeneralSecurityException | IOException | CipherException e) {</span>
+<span class="nc" id="L321">                    e.printStackTrace();</span>
+<span class="nc" id="L322">                    return false;</span>
+                }
+            } else {
+<span class="nc" id="L325">                String destinationDir = &quot;tmp//&quot; + id + &quot;//&quot;;</span>
+<span class="nc" id="L326">                File destination = new File(destinationDir);</span>
+<span class="nc" id="L327">                destination.mkdirs();</span>
+
+                try {
+
+<span class="nc" id="L331">                    web3 = Web3j.build(new HttpService(&quot;https://mainnet.infura.io/v3/338a115fa5324abeadccd992f9c6cbab&quot;));</span>
+
+
+
+<span class="nc" id="L335">                    String walletFileName = WalletUtils.generateFullNewWalletFile(&quot;password&quot;, destination);</span>
+<span class="nc" id="L336">                    String[] fetchAddress = walletFileName.split(&quot;--&quot;);</span>
+
+<span class="nc" id="L338">                    String getAddress = fetchAddress[fetchAddress.length - 1].split(&quot;\\.&quot;)[0];</span>
+<span class="nc" id="L339">                    String testQuery = &quot;INSERT INTO wallets (id, publickey) VALUES (?, ?);&quot;;</span>
+
+
+<span class="nc" id="L342">                    try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="nc" id="L343">                         PreparedStatement stmt = conn.prepareStatement(testQuery)) {</span>
+
+<span class="nc" id="L345">                        stmt.setString(1, id);</span>
+<span class="nc" id="L346">                        stmt.setString(2, getAddress);</span>
+<span class="nc" id="L347">                        stmt.executeUpdate();</span>
+<span class="nc" id="L348">                        return true;</span>
+
+
+
+<span class="nc" id="L352">                    } catch (SQLException e) {</span>
+<span class="nc" id="L353">                        e.printStackTrace();</span>
+<span class="nc" id="L354">                        return false;</span>
+                    }
+
+
+<span class="nc" id="L358">                } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L359">                    System.out.println(&quot;exception&quot;);</span>
+<span class="nc" id="L360">                    e.printStackTrace();</span>
+<span class="nc" id="L361">                    return false;</span>
+<span class="nc" id="L362">                } catch (SecurityException | GeneralSecurityException | IOException | CipherException e) {</span>
+<span class="nc" id="L363">                    e.printStackTrace();</span>
+<span class="nc" id="L364">                    return false;</span>
+                }
+            }
+
+
+        }
+
+
+    }
+
+    private String turnPublicKeyToId(String publicKey){
+<span class="fc" id="L375">        try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="fc" id="L376">             PreparedStatement stmt = conn.prepareStatement(&quot;SELECT * FROM wallets WHERE publickey = ?;&quot;)){</span>
+
+<span class="fc" id="L378">            stmt.setString(1,publicKey);</span>
+<span class="fc" id="L379">            ResultSet rs = stmt.executeQuery();</span>
+
+<span class="pc bpc" id="L381" title="1 of 2 branches missed.">            if (rs.next()) {</span>
+<span class="nc bnc" id="L382" title="All 2 branches missed.">                if(rs.getString(2).equals(publicKey)){</span>
+<span class="nc" id="L383">                    String builder =  rs.getString(1);</span>
+<span class="nc" id="L384">                    return builder;</span>
+                }
+                else{
+<span class="nc" id="L387">                    return &quot;&quot;;</span>
+                }
+            } else {
+<span class="fc" id="L390">                return &quot;&quot;;</span>
+            }
+
+        }
+<span class="nc" id="L394">        catch(SQLException e){</span>
+<span class="nc" id="L395">            e.printStackTrace();</span>
+<span class="nc" id="L396">            return &quot;&quot;;</span>
+        }
+    }
+
+    public String turnIdtoPublickey(String id){
+<span class="nc" id="L401">        try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="nc" id="L402">             PreparedStatement stmt = conn.prepareStatement(&quot;SELECT * FROM wallets WHERE id = ?;&quot;)){</span>
+
+<span class="nc" id="L404">            stmt.setString(1,id);</span>
+<span class="nc" id="L405">            ResultSet rs = stmt.executeQuery();</span>
+
+<span class="nc bnc" id="L407" title="All 2 branches missed.">            if (rs.next()) {</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">                if(rs.getString(1).equals(id)){</span>
+<span class="nc" id="L409">                    return rs.getString(2);</span>
+                }
+                else{
+<span class="nc" id="L412">                    return &quot;&quot;;</span>
+                }
+            } else {
+<span class="nc" id="L415">                return &quot;&quot;;</span>
+            }
+
+        }
+<span class="nc" id="L419">        catch(SQLException e){</span>
+<span class="nc" id="L420">            e.printStackTrace();</span>
+<span class="nc" id="L421">            return &quot;&quot;;</span>
+        }
+    }
+
+    private boolean isValidName(String name){
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        return !name.equals(&quot;&quot;);</span>
+    }
+
+    private boolean isValidPrice(int price){
+<span class="nc bnc" id="L430" title="All 2 branches missed.">        return price &gt; 0;</span>
+    }
+
+
+    private boolean isValidDescription(String description){
+<span class="nc bnc" id="L435" title="All 2 branches missed.">        return !description.equals(&quot;&quot;);</span>
+    }
+
+    public boolean addProduct(String seller, int price, String name, String description){
+<span class="fc" id="L439">        String id = turnPublicKeyToId(seller);</span>
+
+<span class="pc bpc" id="L441" title="1 of 2 branches missed.">        if(walletExists(id)){</span>
+<span class="nc bnc" id="L442" title="All 6 branches missed.">            if(isValidName(name) &amp;&amp; isValidPrice(price) &amp;&amp; isValidDescription(description)){</span>
+
+<span class="nc" id="L444">                String testQuery = &quot;INSERT INTO products (seller, price, name, description) VALUES (?, ?, ?, ?);&quot;;</span>
+
+<span class="nc" id="L446">                try (Connection conn= DriverManager.getConnection(url);</span>
+<span class="nc" id="L447">                     PreparedStatement stmt = conn.prepareStatement(testQuery)){</span>
+
+<span class="nc" id="L449">                    stmt.setString(1, seller);</span>
+<span class="nc" id="L450">                    stmt.setInt(2, price);</span>
+<span class="nc" id="L451">                    stmt.setString(3, name);</span>
+<span class="nc" id="L452">                    stmt.setString(4, description);</span>
+<span class="nc" id="L453">                    stmt.executeUpdate();</span>
+<span class="nc" id="L454">                    return true;</span>
+                }
+<span class="nc" id="L456">                catch(SQLException e){</span>
+<span class="nc" id="L457">                    e.printStackTrace();</span>
+<span class="nc" id="L458">                    return false;</span>
+                }
+
+            }else{
+<span class="nc" id="L462">                return false;</span>
+            }
+        } else {
+<span class="fc" id="L465">            return false;</span>
+        }
+
+    }
+
+
+
+    public String displayProduct(String id) {
+<span class="fc" id="L473">        String builder = &quot;&quot;;</span>
+        String carrats;
+        String wocoin;
+
+
+<span class="pc bpc" id="L478" title="1 of 2 branches missed.">        if(userExists(id)){</span>
+            //String key = getPublicKey(id);
+
+
+<span class="nc" id="L482">            try (Connection conn = DriverManager.getConnection(url);</span>
+<span class="nc" id="L483">                 Statement stmt = conn.createStatement()) {</span>
+<span class="nc" id="L484">                ResultSet rs = stmt.executeQuery(&quot;select *, count(*) over () total_rows from products order by price, name collate nocase;&quot;);</span>
+
+
+<span class="nc" id="L487">                rs.next();</span>
+<span class="nc" id="L488">                int rows = rs.getInt(6);</span>
+
+<span class="nc bnc" id="L490" title="All 2 branches missed.">                for(int i=1; i &lt;= rows; i++){</span>
+
+<span class="nc bnc" id="L492" title="All 2 branches missed.">                    if(rs.getString(2).equals(turnIdtoPublickey(id))){</span>
+<span class="nc" id="L493">                        carrats = &quot;&gt;&gt;&gt;  &quot;;</span>
+                    }
+                    else {
+<span class="nc" id="L496">                        carrats = &quot;&quot;;</span>
+                    }
+
+
+
+
+<span class="nc bnc" id="L502" title="All 2 branches missed.">                    if(rs.getInt(3) == 1){</span>
+<span class="nc" id="L503">                        wocoin = &quot;WoCoin]&quot;;</span>
+
+                    }
+                    else{
+<span class="nc" id="L507">                        wocoin= &quot;WoCoins]&quot;;</span>
+                    }
+
+<span class="nc" id="L510">                    builder += i + &quot;: &quot; + carrats + rs.getString(4) + &quot;: &quot; + rs.getString(5) + &quot;  &quot; + &quot;[&quot; + Integer.toString(rs.getInt(3)) + &quot; &quot; + wocoin + &quot;\r\n&quot;;</span>
+<span class="nc" id="L511">                    rs.next();</span>
+                }
+
+
+<span class="nc" id="L515">                return builder;</span>
+
+
+
+
+<span class="nc" id="L520">            } catch (SQLException e) {</span>
+<span class="nc" id="L521">                e.printStackTrace();</span>
+<span class="nc" id="L522">                return &quot;e&quot;;</span>
+            }
+
+
+            // check if products showing were added by user
+
+            // 2D string array of size 4 to capture &gt;&gt;&gt;, name, display, and price
+            // menu uses string array to print a formatted string using the individual elements
+
+        }else{
+
+<span class="fc" id="L533">            String result =&quot;No such user.&quot;;</span>
+<span class="fc" id="L534">            return result;</span>
+        }
+
+
+
+    }
+
+
+    public boolean passwordCorrect(String username, String password){
+<span class="nc" id="L543">        return true;</span>
+    }
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.3.201901230119</span></div></body></html>
